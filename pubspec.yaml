@@ -1,0 +1,29 @@
+name: urbanflair
+description: "A new Flutter project."
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+  syncfusion_flutter_charts: ^34.1.29
+  supabase_flutter: ^2.10.0
+  qr_flutter: ^4.1.0
+  flutter_local_notifications: ^23.0.2
+  share_plus: ^13.3.1
+  http: ^1.2.2
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
