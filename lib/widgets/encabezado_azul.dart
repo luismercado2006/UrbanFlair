@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../theme/app_colors.dart';
 import '../utils/navegacion.dart';
-import 'urban_flair_logo.dart';
+import 'logo_recortado.dart';
 
 /// Barra azul superior: logo a la izquierda, título opcional al centro
 /// y flecha que regresa al Home.
@@ -19,7 +19,7 @@ class EncabezadoAzul extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: Row(
         children: [
-          const UrbanFlairLogo(height: 48),
+          const LogoRecortado(alto: 40),
           Expanded(
             child: titulo == null
                 ? const SizedBox.shrink()

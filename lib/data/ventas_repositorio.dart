@@ -15,21 +15,41 @@ class VentasRepositorio {
   Future<List<SerieVentas>> ventasPorMes() async {
     final filas = await _db.from('v_ventas_por_mes').select().order('mes_fecha');
 
-    // Meses ordenados que aparecen en los datos (clave aaaa-mm).
-    final meses = <String>{};
+    String claveDe(DateTime fecha) =>
+        '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}';
+
+    // Unidades por categoría y mes (clave aaaa-mm), y el rango de meses.
+    DateTime? primero;
+    DateTime? ultimo;
     final porCategoria = <String, Map<String, double>>{};
     for (final f in filas) {
       final fecha = DateTime.parse(f['mes_fecha'] as String);
-      final clave =
-          '${fecha.year}-${fecha.month.toString().padLeft(2, '0')}';
-      meses.add(clave);
+      final mes = DateTime(fecha.year, fecha.month);
+      if (primero == null || mes.isBefore(primero)) primero = mes;
+      if (ultimo == null || mes.isAfter(ultimo)) ultimo = mes;
       final cat = f['categoria'] as String;
-      porCategoria.putIfAbsent(cat, () => {})[clave] =
+      porCategoria.putIfAbsent(cat, () => {})[claveDe(mes)] =
           (f['unidades'] as num).toDouble();
     }
-    final ordenados = meses.toList()..sort();
 
-    String etiqueta(String clave) => _meses[int.parse(clave.substring(5)) - 1];
+    // Todos los meses entre el primero y el último, aunque no tengan ventas,
+    // para que la línea no una meses lejanos como si fueran seguidos.
+    final ordenados = <String>[];
+    if (primero != null && ultimo != null) {
+      for (var m = primero;
+          !m.isAfter(ultimo);
+          m = DateTime(m.year, m.month + 1)) {
+        ordenados.add(claveDe(m));
+      }
+    }
+
+    // Si el rango pasa de 12 meses, se agrega el año para no repetir etiquetas
+    // (el eje de categorías juntaría dos "Jun" en el mismo punto).
+    final conAnio = ordenados.length > 12;
+    String etiqueta(String clave) {
+      final mes = _meses[int.parse(clave.substring(5)) - 1];
+      return conAnio ? '$mes ${clave.substring(2, 4)}' : mes;
+    }
 
     return porCategoria.entries
         .map((e) => SerieVentas(

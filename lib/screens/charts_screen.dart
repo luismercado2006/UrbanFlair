@@ -5,7 +5,10 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 import '../data/ventas_repositorio.dart';
 import '../models/datos_graficas.dart';
 import '../theme/app_colors.dart';
+import '../theme/colores_graficas.dart';
 import '../widgets/encabezado_azul.dart';
+import '../widgets/graficas_3d/comunes_3d.dart';
+import '../widgets/graficas_3d/vista_3d.dart';
 
 class ChartsScreen extends StatefulWidget {
   const ChartsScreen({super.key});
@@ -15,17 +18,34 @@ class ChartsScreen extends StatefulWidget {
 }
 
 class _ChartsScreenState extends State<ChartsScreen> {
-  static const _paleta = [
-    Color(0xFF0B3A9B),
-    Color(0xFF29B6F6),
-    Color(0xFFFFB300),
-    Color(0xFFD64550),
-  ];
-
   final _repo = VentasRepositorio();
   late final Future<List<SerieVentas>> _porMes = _repo.ventasPorMes();
   late final Future<List<VentaCategoria>> _porCategoria =
       _repo.ventasPorCategoria();
+
+  /// Color fijo por categoría (mismo en la vista clásica y en la 3D): se juntan
+  /// las categorías de ambas consultas y se colorean con ColoresGraficas.
+  late final Future<Map<String, Color>> _colores = _calcularColores();
+
+  late final Future<(List<SerieVentas>, Map<String, Color>)> _mesConColores =
+      _porMes.then((d) async => (d, await _colores));
+  late final Future<(List<VentaCategoria>, Map<String, Color>)>
+      _categoriaConColores = _porCategoria.then((d) async => (d, await _colores));
+
+  Future<Map<String, Color>> _calcularColores() async {
+    final nombres = <String>{};
+    // Si una consulta falla, se usan las categorías de la otra.
+    try {
+      nombres.addAll((await _porMes).map((s) => s.nombre));
+    } catch (_) {}
+    try {
+      nombres.addAll((await _porCategoria).map((d) => d.categoria));
+    } catch (_) {}
+    return ColoresGraficas.porCategoria(nombres);
+  }
+
+  /// false = vista clásica (las dos gráficas de siempre), true = vista 3D.
+  bool _vista3d = false;
 
   @override
   Widget build(BuildContext context) {
@@ -42,22 +62,47 @@ class _ChartsScreenState extends State<ChartsScreen> {
                   Text('Gráficos\nventas y más',
                       style: GoogleFonts.archivoBlack(
                           color: AppColors.azulTitulo, fontSize: 28, height: 1.2)),
+                  const SizedBox(height: 14),
+                  SegmentedButton<bool>(
+                    style: estiloSegmentos3D(context),
+                    showSelectedIcon: false,
+                    segments: const [
+                      ButtonSegment(value: false, label: Text('Vista clásica')),
+                      ButtonSegment(value: true, label: Text('Vista 3D')),
+                    ],
+                    selected: {_vista3d},
+                    onSelectionChanged: (s) =>
+                        setState(() => _vista3d = s.first),
+                  ),
                   const SizedBox(height: 22),
+                  // Vista 3D: recibe los MISMOS Future que la vista clásica
+                  // (mismos datos ya cargados y mismo mapa de colores).
+                  if (_vista3d)
+                    Vista3D(
+                      porMes: _mesConColores,
+                      porCategoria: _categoriaConColores,
+                    )
+                  else ...[
                   _TarjetaGrafica(
                     alto: 250,
-                    child: FutureBuilder<List<SerieVentas>>(
-                      future: _porMes,
-                      builder: (_, snap) => _contenido(snap, _lineas),
+                    child: FutureBuilder<
+                        (List<SerieVentas>, Map<String, Color>)>(
+                      future: _mesConColores,
+                      builder: (_, snap) =>
+                          _contenido(snap, (r) => _lineas(r.$1, r.$2)),
                     ),
                   ),
                   const SizedBox(height: 24),
                   _TarjetaGrafica(
-                    alto: 300,
-                    child: FutureBuilder<List<VentaCategoria>>(
-                      future: _porCategoria,
-                      builder: (_, snap) => _contenido(snap, _radial),
+                    alto: 560,
+                    child: FutureBuilder<
+                        (List<VentaCategoria>, Map<String, Color>)>(
+                      future: _categoriaConColores,
+                      builder: (_, snap) =>
+                          _contenido(snap, (r) => _barras(r.$1, r.$2)),
                     ),
                   ),
+                  ],
                 ],
               ),
             ),
@@ -79,13 +124,12 @@ class _ChartsScreenState extends State<ChartsScreen> {
   }
 
   /// Gráfica 1: líneas, ventas por mes y categoría.
-  Widget _lineas(List<SerieVentas> series) {
+  Widget _lineas(List<SerieVentas> series, Map<String, Color> colores) {
     if (series.isEmpty) {
       return const Center(child: Text('Aún no hay ventas para graficar'));
     }
     return SfCartesianChart(
       title: const ChartTitle(text: 'Ventas por mes'),
-      palette: _paleta,
       legend: const Legend(
           isVisible: true,
           position: LegendPosition.bottom,
@@ -96,6 +140,7 @@ class _ChartsScreenState extends State<ChartsScreen> {
       series: series
           .map((s) => LineSeries<PuntoVenta, String>(
                 name: s.nombre,
+                color: colores[s.nombre],
                 dataSource: s.puntos,
                 xValueMapper: (p, _) => p.mes,
                 yValueMapper: (p, _) => p.unidades,
@@ -105,29 +150,31 @@ class _ChartsScreenState extends State<ChartsScreen> {
     );
   }
 
-  /// Gráfica 2: anillos concentrados, total por categoría.
-  /// (Syncfusion Flutter no trae gráfica polar; el radial es lo más parecido.)
-  Widget _radial(List<VentaCategoria> datos) {
+  /// Gráfica 2: barras horizontales, total por categoría (de mayor a menor).
+  Widget _barras(List<VentaCategoria> datos, Map<String, Color> colores) {
     if (datos.isEmpty) {
       return const Center(child: Text('Aún no hay ventas para graficar'));
     }
-    final maximo =
-        datos.map((d) => d.unidades).reduce((a, b) => a > b ? a : b) * 1.2;
-    return SfCircularChart(
+    final ordenados = [...datos]..sort((a, b) => b.unidades.compareTo(a.unidades));
+    return SfCartesianChart(
       title: const ChartTitle(text: 'Ventas por categoría'),
-      palette: _paleta,
-      legend: const Legend(
-          isVisible: true, overflowMode: LegendItemOverflowMode.wrap),
       tooltipBehavior: TooltipBehavior(enable: true),
-      series: <CircularSeries<VentaCategoria, String>>[
-        RadialBarSeries<VentaCategoria, String>(
-          dataSource: datos,
+      // isInversed: la primera categoría (la mayor) queda arriba.
+      primaryXAxis: const CategoryAxis(
+          isInversed: true,
+          interval: 1,
+          majorGridLines: MajorGridLines(width: 0)),
+      primaryYAxis: const NumericAxis(
+          title: AxisTitle(text: 'Unidades'),
+          rangePadding: ChartRangePadding.additional),
+      series: <CartesianSeries<VentaCategoria, String>>[
+        BarSeries<VentaCategoria, String>(
+          name: 'Unidades',
+          dataSource: ordenados,
           xValueMapper: (d, _) => d.categoria,
           yValueMapper: (d, _) => d.unidades,
-          maximumValue: maximo,
-          cornerStyle: CornerStyle.bothCurve,
-          radius: '90%',
-          gap: '8%',
+          pointColorMapper: (d, _) => colores[d.categoria],
+          borderRadius: const BorderRadius.horizontal(right: Radius.circular(6)),
           dataLabelSettings: const DataLabelSettings(isVisible: true),
         ),
       ],

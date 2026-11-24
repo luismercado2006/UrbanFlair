@@ -7,7 +7,7 @@ import '../theme/app_colors.dart';
 import '../utils/validators.dart';
 import '../widgets/boton_google.dart';
 import '../widgets/campo_auth.dart';
-import '../widgets/urban_flair_logo.dart';
+import '../widgets/auth/fondo_auth.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -60,112 +60,161 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final xl = MediaQuery.sizeOf(context).width >= 1280;
     return Scaffold(
       backgroundColor: AppColors.fondoAuth,
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 420),
-              child: Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                decoration: BoxDecoration(
-                  color: AppColors.tarjetaAuth,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.bordeAuth),
+      body: FondoAuth(
+        formulario: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Encabezado del formulario
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: AppColors.campoAuth,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                        color: AppColors.bordeAuth.withValues(alpha: 0.3)),
+                  ),
+                  child: const Icon(Icons.lock_outline,
+                      size: 20, color: AppColors.celesteLink),
                 ),
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const Center(child: UrbanFlairLogo(height: 64)),
-                      const SizedBox(height: 12),
-                      Text('Iniciar Sesión',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.archivoBlack(
-                              color: Colors.white, fontSize: 32)),
-                      const SizedBox(height: 22),
-                      CampoAuth(
-                        etiqueta: 'Correo',
-                        hint: 'Ejemplo@Gmail.Com',
-                        controller: _correoCtrl,
-                        teclado: TextInputType.emailAddress,
-                        validador: Validators.correo,
-                      ),
-                      const SizedBox(height: 18),
-                      CampoAuth(
-                        etiqueta: 'Contraseña',
-                        hint: '••••••',
-                        controller: _passCtrl,
-                        esPassword: true,
-                        validador: Validators.contrasena,
-                      ),
-                      const SizedBox(height: 26),
-                      Center(
-                        child: SizedBox(
-                          width: 140,
-                          height: 40,
-                          child: ElevatedButton(
-                            onPressed: _cargando ? null : _iniciarSesion,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.azulBoton,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(16)),
-                            ),
-                            child: _cargando
-                                ? const SizedBox(
-                                    width: 18,
-                                    height: 18,
-                                    child: CircularProgressIndicator(
-                                        strokeWidth: 2, color: Colors.white))
-                                : Text('Iniciar Sesión',
-                                    style: GoogleFonts.archivo(
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 12)),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Text('O Continuar Con...',
-                          textAlign: TextAlign.center,
-                          style: GoogleFonts.archivo(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 12)),
-                      const SizedBox(height: 14),
-                      BotonGoogle(
-                          texto: 'Iniciar Sesión Con Google',
-                          onPressed: _iniciarConGoogle),
-                      const SizedBox(height: 18),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text('¿No Tienes Cuenta? ',
-                              style: GoogleFonts.archivo(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 12)),
-                          GestureDetector(
-                            onTap: () => Navigator.pushReplacementNamed(
-                                context, AppRoutes.registro),
-                            child: Text('Regístrate',
+              ),
+              const SizedBox(height: 24),
+              Text('Bienvenido de nuevo',
+                  style: GoogleFonts.archivoBlack(
+                      color: Colors.white,
+                      fontSize: xl ? 32 : 28,
+                      height: 1.25,
+                      letterSpacing: -0.035 * (xl ? 32 : 28))),
+              const SizedBox(height: 12),
+              Text('Tu tienda, en un solo lugar. Inicia sesión para continuar.',
+                  style: GoogleFonts.archivo(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 14,
+                      height: 24 / 14)),
+              const SizedBox(height: 36),
+              CampoAuth(
+                etiqueta: 'Correo',
+                hint: 'tu@correo.com',
+                icono: Icons.mail_outline,
+                controller: _correoCtrl,
+                teclado: TextInputType.emailAddress,
+                validador: Validators.correo,
+              ),
+              const SizedBox(height: 20),
+              CampoAuth(
+                etiqueta: 'Contraseña',
+                hint: 'Ingresa tu contraseña',
+                icono: Icons.lock_outline,
+                controller: _passCtrl,
+                esPassword: true,
+                validador: Validators.contrasena,
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _cargando ? null : _iniciarSesion,
+                  style: ElevatedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    disabledForegroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ).copyWith(
+                    backgroundColor: WidgetStateProperty.resolveWith(
+                        (estados) => estados.contains(WidgetState.hovered) &&
+                                !estados.contains(WidgetState.disabled)
+                            ? AppColors.azulEncabezado
+                            : AppColors.azulBoton),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: _cargando
+                        ? [
+                            SizedBox(
+                                width: 16,
+                                height: 16,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                    backgroundColor:
+                                        Colors.white.withValues(alpha: 0.3))),
+                            const SizedBox(width: 12),
+                            Text('Iniciando sesión…',
                                 style: GoogleFonts.archivo(
-                                    color: AppColors.celesteLink,
-                                    fontWeight: FontWeight.w800,
-                                    fontSize: 12)),
-                          ),
-                        ],
-                      ),
-                    ],
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14)),
+                          ]
+                        : [
+                            Text('Iniciar sesión',
+                                style: GoogleFonts.archivo(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14)),
+                            const SizedBox(width: 12),
+                            const Icon(Icons.arrow_forward, size: 20),
+                          ],
                   ),
                 ),
               ),
-            ),
+              const SizedBox(height: 28),
+              Row(
+                children: [
+                  Expanded(
+                      child: Container(
+                          height: 1,
+                          color: AppColors.bordeAuth.withValues(alpha: 0.25))),
+                  const SizedBox(width: 16),
+                  Text('o continúa con',
+                      style: GoogleFonts.archivo(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 12)),
+                  const SizedBox(width: 16),
+                  Expanded(
+                      child: Container(
+                          height: 1,
+                          color: AppColors.bordeAuth.withValues(alpha: 0.25))),
+                ],
+              ),
+              const SizedBox(height: 28),
+              BotonGoogle(
+                  texto: 'Continuar con Google', onPressed: _iniciarConGoogle),
+              const SizedBox(height: 16),
+              Wrap(
+                alignment: WrapAlignment.center,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  Text('¿No tienes cuenta?',
+                      style: GoogleFonts.archivo(
+                          color: Colors.white.withValues(alpha: 0.7),
+                          fontSize: 14)),
+                  GestureDetector(
+                    onTap: () => Navigator.pushReplacementNamed(
+                        context, AppRoutes.registro),
+                    child: MouseRegion(
+                      cursor: SystemMouseCursors.click,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 4, vertical: 12),
+                        child: Text('Regístrate',
+                            style: GoogleFonts.archivo(
+                                color: AppColors.celesteLink,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 14)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
       ),
